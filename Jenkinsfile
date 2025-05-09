@@ -12,7 +12,6 @@ pipeline {
         SSH_KEY_ID = 'docker-host-creds'
         NEXUS_REGISTRY = "13.232.158.95:5000"
         NEXUS_CREDENTIALS_ID = 'nexus-docker-creds'
-        KUBECONFIG_PATH = "/home/ec2-user/.kube/config" // Set your kubeconfig path here
     }
 
     stages {
@@ -58,19 +57,17 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    echo "Building Docker image on remote Docker host"
-                    sshagent(credentials: [SSH_KEY_ID]) {
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
-                                set -e; set -x;
-                                rm -rf ${REPO_DIR};
-                                git clone ${REPO_URL} ${REPO_DIR};
-                                cd ${REPO_DIR};
-                                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                            '
-                        """
-                    }
+                echo "Building Docker image on remote Docker host"
+                sshagent(credentials: [SSH_KEY_ID]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
+                            set -e; set -x;
+                            rm -rf ${REPO_DIR};
+                            git clone ${REPO_URL} ${REPO_DIR};
+                            cd ${REPO_DIR};
+                            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                        '
+                    """
                 }
             }
         }
@@ -82,17 +79,14 @@ pipeline {
                     usernameVariable: 'DOCKER_USERNAME',
                     passwordVariable: 'DOCKER_PASSWORD'
                 )]) {
-                    script {
-                        echo "Pushing Docker image to Nexus registry from remote host"
-                        sshagent(credentials: [SSH_KEY_ID]) {
-                            sh """
-                                ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
-                                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
-                                    echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
-                                    docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
-                                '
-                            """
-                        }
+                    sshagent(credentials: [SSH_KEY_ID]) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
+                                docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
+                                echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
+                                docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                            '
+                        """
                     }
                 }
             }
@@ -100,16 +94,14 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    echo "Deploying application to Kubernetes cluster"
-                    withCredentials([file(credentialsId: 'kubeconfig-cred', variable: 'KUBECONFIG')]) {
-                        sh """
-                            export KUBECONFIG=$KUBECONFIG_PATH
-                            kubectl apply -f k8s/deployment.yaml
-                            kubectl apply -f k8s/service.yaml
-                            kubectl rollout status deployment/my-httpd-site-deployment
-                        """
-                    }
+                echo "Deploying application to Kubernetes cluster"
+                withCredentials([file(credentialsId: 'kubeconfig-cred', variable: 'KUBECONFIG')]) {
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                        kubectl rollout status deployment/my-httpd-site-deployment
+                    '''
                 }
             }
         }
