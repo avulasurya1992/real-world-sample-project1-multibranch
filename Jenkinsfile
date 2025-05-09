@@ -1,7 +1,6 @@
 pipeline {
     agent any
 
-  
     environment {
         SONARQUBE_SCANNER = 'sonar-scanner'
         SONARQUBE_SERVER  = 'SonarQubeServer'
@@ -26,13 +25,28 @@ pipeline {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     withCredentials([string(credentialsId: 'SONAR_TOKEN_ID', variable: 'SONAR_TOKEN')]) {
                         sh """
-                            ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \
-                            -Dsonar.projectKey=sample-project1 \
-                            -Dsonar.sources=. \
-                            -Dsonar.projectName=sample-project1 \
-                            -Dsonar.host.url=http://65.1.109.36:9000 \
+                            ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \\
+                            -Dsonar.projectKey=sample-project1 \\
+                            -Dsonar.sources=. \\
+                            -Dsonar.projectName=sample-project1 \\
+                            -Dsonar.host.url=http://65.1.109.36:9000 \\
                             -Dsonar.login=$SONAR_TOKEN
                         """
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 4, unit: 'MINUTES') {
+                    script {
+                        def qualityGate = waitForQualityGate()
+                        if (qualityGate.status != 'OK') {
+                            error "❌ Quality Gate failed: ${qualityGate.status}"
+                        } else {
+                            echo "✅ Quality Gate passed: ${qualityGate.status}"
+                        }
                     }
                 }
             }
