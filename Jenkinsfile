@@ -35,6 +35,7 @@ pipeline {
                             -Dsonar.projectKey=sample-project1 \\
                             -Dsonar.sources=. \\
                             -Dsonar.projectName=sample-project1 \\
+                            -Dsonar.exclusions=**/Dockerfile \\
                             -Dsonar.host.url=http://13.235.42.250:9000 \\
                             -Dsonar.login=$SONAR_TOKEN
                         """
