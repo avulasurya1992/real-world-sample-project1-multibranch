@@ -59,7 +59,6 @@ pipeline {
             steps {
                 script {
                     echo "Building Docker image on remote Docker host"
-
                     sshagent(credentials: [SSH_KEY_ID]) {
                         sh """
                             ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
@@ -77,23 +76,23 @@ pipeline {
 
         stage('Push Docker Image to Nexus') {
             steps {
-                script {
-                    echo "Pushing Docker image to Nexus registry from remote host"
-
-                    sshagent(credentials: [SSH_KEY_ID]) {
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
-                                docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
-                                echo "Logging into Nexus registry";
-                                docker login -u \$(echo $DOCKER_USERNAME) -p \$(echo $DOCKER_PASSWORD) ${NEXUS_REGISTRY};
-                                docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
-                            '
-                        """
+                withCredentials([usernamePassword(
+                    credentialsId: "${NEXUS_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    script {
+                        echo "Pushing Docker image to Nexus registry from remote host"
+                        sshagent(credentials: [SSH_KEY_ID]) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
+                                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
+                                    echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
+                                    docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                                '
+                            """
+                        }
                     }
-                }
-                environment {
-                    DOCKER_USERNAME = credentials("${NEXUS_CREDENTIALS_ID}").username
-                    DOCKER_PASSWORD = credentials("${NEXUS_CREDENTIALS_ID}").password
                 }
             }
         }
@@ -102,7 +101,6 @@ pipeline {
             steps {
                 script {
                     echo "Running Docker container on remote Docker host"
-
                     sshagent(credentials: [SSH_KEY_ID]) {
                         sh """
                             ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
