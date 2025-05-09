@@ -4,11 +4,11 @@ pipeline {
     environment {
         SONARQUBE_SCANNER = 'sonar-scanner'
         SONARQUBE_SERVER  = 'SonarQubeServer'
-        DOCKER_HOST = "ssh://ec2-user@3.108.42.154" // SSH connection to the Docker host
+        DOCKER_HOST = "ssh://ec2-user@3.108.42.154"
         IMAGE_NAME = "my-httpd-site:latest"
         REPO_URL = "https://github.com/avulasurya1992/real-world-sample-project1-multibranch.git"
-        REPO_DIR = "real-world-sample-project1-multibranch" // The directory where repo will be cloned on the Docker host
-        SSH_KEY_ID = 'docker-host-creds' // The credentials ID you created
+        REPO_DIR = "real-world-sample-project1-multibranch"
+        SSH_KEY_ID = 'docker-host-creds' // The ID of your SSH credentials in Jenkins
     }
 
     stages {
@@ -56,11 +56,12 @@ pipeline {
                 script {
                     echo "Building Docker image on remote Docker host"
 
-                    // Run the Docker build command on the remote Docker server via SSH using Jenkins credentials
-                    sh """
-                        ssh -i ${JENKINS_HOME}/.ssh/${SSH_KEY_ID} -o StrictHostKeyChecking=no ec2-user@3.108.42.154 \\
-                        'git clone ${REPO_URL} ${REPO_DIR} || (cd ${REPO_DIR} && git pull) && cd ${REPO_DIR} && docker build -t ${IMAGE_NAME} .'
-                    """
+                    sshagent(credentials: [SSH_KEY_ID]) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ec2-user@3.108.42.154 \\
+                            'git clone ${REPO_URL} ${REPO_DIR} || (cd ${REPO_DIR} && git pull) && cd ${REPO_DIR} && docker build -t ${IMAGE_NAME} .'
+                        """
+                    }
                 }
             }
         }
@@ -70,11 +71,12 @@ pipeline {
                 script {
                     echo "Running Docker container on remote Docker host"
 
-                    // Run the Docker container on the remote Docker server via SSH
-                    sh """
-                        ssh -i ${JENKINS_HOME}/.ssh/${SSH_KEY_ID} -o StrictHostKeyChecking=no ec2-user@3.108.42.154 \\
-                        'docker run -d -p 8080:80 ${IMAGE_NAME}'
-                    """
+                    sshagent(credentials: [SSH_KEY_ID]) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ec2-user@3.108.42.154 \\
+                            'docker run -d -p 8080:80 ${IMAGE_NAME}'
+                        """
+                    }
                 }
             }
         }
