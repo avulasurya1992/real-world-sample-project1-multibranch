@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-httpd-site
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-httpd-site
+  template:
+    metadata:
+      labels:
+        app: my-httpd-site
+    spec:
+      containers:
+      - name: my-httpd-site
+        image: 13.232.158.95:5000/my-httpd-site:latest
+        ports:
+        - containerPort: 80
+      imagePullSecrets:
+      - name: nexus-creds
