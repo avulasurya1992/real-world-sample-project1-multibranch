@@ -12,6 +12,7 @@ pipeline {
         SSH_KEY_ID = 'docker-host-creds'
         NEXUS_REGISTRY = "13.232.158.95:5000"
         NEXUS_CREDENTIALS_ID = 'nexus-docker-creds'
+        KUBECONFIG_PATH = "~/.kube/config" // Set your kubeconfig path here
     }
 
     stages {
@@ -97,15 +98,16 @@ pipeline {
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    echo "Running Docker container on remote Docker host"
-                    sshagent(credentials: [SSH_KEY_ID]) {
+                    echo "Deploying application to Kubernetes cluster"
+                    withCredentials([file(credentialsId: 'kubeconfig-cred', variable: 'KUBECONFIG')]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
-                                docker run -dt -p 8080:80 ${IMAGE_NAME}:${IMAGE_TAG}
-                            '
+                            export KUBECONFIG=$KUBECONFIG_PATH
+                            kubectl apply -f k8s/deployment.yaml
+                            kubectl apply -f k8s/service.yaml
+                            kubectl rollout status deployment/my-httpd-site-deployment
                         """
                     }
                 }
@@ -115,7 +117,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build, SonarQube analysis, and Docker push completed successfully.'
+            echo '✅ Build, SonarQube analysis, Docker push, and Kubernetes deployment completed successfully.'
         }
         failure {
             echo '❌ Build failed.'
