@@ -59,15 +59,12 @@ pipeline {
 
                     sshagent(credentials: [SSH_KEY_ID]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 << 'EOF'
-                                set -e
-                                set -x
-
-                                rm -rf ${REPO_DIR}
-                                git clone ${REPO_URL} ${REPO_DIR}
-                                cd ${REPO_DIR}
-                                docker build -t ${IMAGE_NAME} .
-                            EOF
+                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 \
+                            'set -e; set -x; \
+                            rm -rf ${REPO_DIR}; \
+                            git clone ${REPO_URL} ${REPO_DIR}; \
+                            cd ${REPO_DIR}; \
+                            docker build -t ${IMAGE_NAME} .'
                         """
                     }
                 }
@@ -81,7 +78,7 @@ pipeline {
 
                     sshagent(credentials: [SSH_KEY_ID]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 \\
+                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 \
                             'docker run -dt -p 8080:80 ${IMAGE_NAME}'
                         """
                     }
