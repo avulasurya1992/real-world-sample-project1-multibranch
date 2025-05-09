@@ -12,7 +12,7 @@ pipeline {
         SSH_KEY_ID = 'docker-host-creds'
         NEXUS_REGISTRY = "13.232.158.95:5000"
         NEXUS_CREDENTIALS_ID = 'nexus-docker-creds'
-        KUBECONFIG_PATH = "~/.kube/config" // Set your kubeconfig path here
+        KUBECONFIG_PATH = "/home/ec2-user/.kube/config" // Set your kubeconfig path here
     }
 
     stages {
