@@ -100,7 +100,7 @@ pipeline {
                         export KUBECONFIG=$KUBECONFIG
                         kubectl apply -f k8s/deployment.yaml
                         kubectl apply -f k8s/service.yaml
-                        kubectl rollout status deployment/my-httpd-site-deployment
+                        kubectl rollout status deployment/my-httpd-site
                     '''
                 }
             }
