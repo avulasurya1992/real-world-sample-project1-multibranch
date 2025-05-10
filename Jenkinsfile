@@ -29,25 +29,24 @@ pipeline {
             }
         }
 
-        /*
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    withCredentials([string(credentialsId: 'SONAR_TOKEN_ID', variable: 'SONAR_TOKEN')]) {
+                    withCredentials([string(credentialsId: 'sonarqube-auth', variable: 'SONAR_TOKEN')]) {
                         sh """
                             ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \\
                             -Dsonar.projectKey=sample-project1 \\
                             -Dsonar.sources=. \\
                             -Dsonar.projectName=sample-project1 \\
                             -Dsonar.exclusions=**/Dockerfile \\
-                            -Dsonar.host.url=http://13.235.42.250:9000 \\
+                            -Dsonar.host.url=http://13.233.113.199:9000 \\
                             -Dsonar.login=$SONAR_TOKEN
                         """
                     }
                 }
             }
         }
-
+        /*
         stage('Quality Gate') {
             steps {
                 timeout(time: 3, unit: 'MINUTES') {
