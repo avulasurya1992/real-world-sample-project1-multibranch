@@ -28,7 +28,8 @@ pipeline {
                 sh 'echo "Build successful"'
             }
         }
-/*
+
+        /*
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
@@ -105,8 +106,10 @@ pipeline {
                 }
             }
         }
+        */
     }
-*/
+
+    /*
     post {
         success {
             echo '✅ Build, SonarQube analysis, Docker push, and Kubernetes deployment completed successfully.'
@@ -115,4 +118,5 @@ pipeline {
             echo '❌ Build failed.'
         }
     }
+    */
 }
