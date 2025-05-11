@@ -10,7 +10,7 @@ pipeline {
         REPO_URL = "https://github.com/avulasurya1992/real-world-sample-project1-multibranch.git"
         REPO_DIR = "real-world-sample-project1-multibranch"
         dockerhost_ssh_key = 'docker-host-creds'
-        NEXUS_REGISTRY = "13.232.158.95:5000"
+        NEXUS_REGISTRY = "65.0.26.117:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
     }
 
