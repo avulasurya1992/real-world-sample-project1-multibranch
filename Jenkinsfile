@@ -33,15 +33,15 @@ pipeline {
             steps {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     withCredentials([string(credentialsId: 'sonarqube-auth', variable: 'SONAR_TOKEN')]) {
-                        sh """
-                            ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \\ 
-                            -Dsonar.projectKey=sample-project1 \\ 
-                            -Dsonar.sources=. \\ 
-                            -Dsonar.projectName=sample-project1 \\ 
-                            -Dsonar.exclusions=**/Dockerfile \\ 
-                            -Dsonar.host.url=http://13.233.113.199:9000 \\ 
+                        sh '''
+                            ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \
+                            -Dsonar.projectKey=sample-project1 \
+                            -Dsonar.sources=. \
+                            -Dsonar.projectName=sample-project1 \
+                            -Dsonar.exclusions=**/Dockerfile \
+                            -Dsonar.host.url=http://13.233.113.199:9000 \
                             -Dsonar.login=$SONAR_TOKEN
-                        """
+                        '''
                     }
                 }
             }
@@ -59,7 +59,7 @@ pipeline {
             steps {
                 echo "Building Docker image on remote Docker host"
                 sshagent(credentials: [dockerhost_ssh_key]) {
-                    sh """
+                    sh '''
                         ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
                             set -e; set -x;
                             rm -rf ${REPO_DIR};
@@ -67,7 +67,7 @@ pipeline {
                             cd ${REPO_DIR};
                             docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
                         '
-                    """
+                    '''
                 }
             }
         }
@@ -80,13 +80,13 @@ pipeline {
                     passwordVariable: 'DOCKER_PASSWORD'
                 )]) {
                     sshagent(credentials: [dockerhost_ssh_key]) {
-                        sh """
+                        sh '''
                             ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
                                 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
                                 echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
                                 docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
                             '
-                        """
+                        '''
                     }
                 }
             }
