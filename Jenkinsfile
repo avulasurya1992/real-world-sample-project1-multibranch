@@ -11,7 +11,7 @@ pipeline {
         REPO_DIR = "real-world-sample-project1-multibranch"
         dockerhost_ssh_key = 'docker-host-creds'
         NEXUS_REGISTRY = "13.232.158.95:5000"
-        NEXUS_CREDENTIALS_ID = 'nexus-docker-creds'
+        NEXUS_CREDENTIALS_ID = 'nexus-docker-cred'
     }
 
     stages {
