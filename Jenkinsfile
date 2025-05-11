@@ -9,7 +9,7 @@ pipeline {
         IMAGE_TAG = "latest"
         REPO_URL = "https://github.com/avulasurya1992/real-world-sample-project1-multibranch.git"
         REPO_DIR = "real-world-sample-project1-multibranch"
-        dockerhost-ssh-key = 'docker-host-creds'
+        dockerhost_ssh_key = 'docker-host-creds'
         NEXUS_REGISTRY = "13.232.158.95:5000"
         NEXUS_CREDENTIALS_ID = 'nexus-docker-creds'
     }
@@ -58,7 +58,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image on remote Docker host"
-                sshagent(credentials: [dockerhost-ssh-key]) {
+                sshagent(credentials: [dockerhost_ssh_key]) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
                             set -e; set -x;
