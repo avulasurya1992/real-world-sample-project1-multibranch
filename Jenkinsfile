@@ -124,8 +124,8 @@ pipeline {
                         kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
                         kubectl create secret docker-registry ${SECRET_NAME} \
                             --docker-server=${NEXUS_REGISTRY} \
-                            --docker-username=${NEXUS_REGISTRY_USER} \
-                            --docker-password=${NEXUS_REGISTRY_PASSWORD} \
+                            --docker-username="${NEXUS_REGISTRY_USER}" \
+                            --docker-password="${NEXUS_REGISTRY_PASSWORD}" \
                             --docker-email=jenkins@nexus.com \
                             --namespace=${KUBE_NAMESPACE}
                     '''
