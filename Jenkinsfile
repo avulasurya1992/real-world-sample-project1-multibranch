@@ -12,10 +12,6 @@ pipeline {
         dockerhost_ssh_key = 'docker-host-creds'
         NEXUS_REGISTRY = "65.0.26.117:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
-        KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
-        CLUSTER_NAME = 'test.k8s.local'
-        SECRET_NAME = 'nexus-creds'
-        KUBE_NAMESPACE = 'default'
     }
 
     stages {
@@ -38,12 +34,12 @@ pipeline {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     withCredentials([string(credentialsId: 'sonarqube-auth', variable: 'SONAR_TOKEN')]) {
                         sh """
-                            ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \\
-                            -Dsonar.projectKey=sample-project1 \\
-                            -Dsonar.sources=. \\
-                            -Dsonar.projectName=sample-project1 \\
-                            -Dsonar.exclusions=**/Dockerfile \\
-                            -Dsonar.host.url=http://13.233.113.199:9000 \\
+                            ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \\ 
+                            -Dsonar.projectKey=sample-project1 \\ 
+                            -Dsonar.sources=. \\ 
+                            -Dsonar.projectName=sample-project1 \\ 
+                            -Dsonar.exclusions=**/Dockerfile \\ 
+                            -Dsonar.host.url=http://13.233.113.199:9000 \\ 
                             -Dsonar.login=$SONAR_TOKEN
                         """
                     }
@@ -80,14 +76,14 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                    usernameVariable: 'NEXUS_REGISTRY_USER',
-                    passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
                 )]) {
                     sshagent(credentials: [dockerhost_ssh_key]) {
                         sh """
                             ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
                                 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
-                                echo "${NEXUS_REGISTRY_PASSWORD}" | docker login -u "${NEXUS_REGISTRY_USER}" --password-stdin ${NEXUS_REGISTRY};
+                                echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
                                 docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
                             '
                         """
@@ -96,54 +92,33 @@ pipeline {
             }
         }
 
-        stage('Export Kubeconfig') {
-            steps {
-                echo "Exporting kubeconfig for cluster"
-                sh '''
-                    export KOPS_STATE_STORE=${KOPS_STATE_STORE}
-                    kops export kubecfg --name ${CLUSTER_NAME}
-                '''
-            }
-        }
-
-        stage('Create Kubernetes Secret for Nexus Docker Registry') {
+        stage('Export Kubeconfig and Deploy to Kubernetes') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                    usernameVariable: 'NEXUS_REGISTRY_USER',
-                    passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
+                    credentialsId: 'aws-jenkins-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
                     sh '''
-                        kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
-                        kubectl create secret docker-registry ${SECRET_NAME} \
-                            --docker-server=${NEXUS_REGISTRY} \
-                            --docker-username=${NEXUS_REGISTRY_USER} \
-                            --docker-password=${NEXUS_REGISTRY_PASSWORD} \
-                            --docker-email=jenkins@nexus.com \
-                            --namespace=${KUBE_NAMESPACE}
+                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                        export KOPS_STATE_STORE=s3://surya-k8-cluster-1
+                        kops export kubecfg --name test.k8s.local
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                        kubectl rollout status deployment/my-httpd-site
                     '''
                 }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                echo "Deploying application to Kubernetes cluster"
-                sh '''
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl apply -f k8s/service.yaml
-                    kubectl rollout status deployment/my-httpd-site
-                '''
             }
         }
     }
 
     post {
         success {
-            echo '✅ Build, analysis, Docker push, and deployment completed successfully.'
+            echo '✅ Build, SonarQube analysis, Docker push, and Kubernetes deployment completed successfully.'
         }
         failure {
-            echo '❌ Pipeline failed.'
+            echo '❌ Build failed.'
         }
     }
 }
