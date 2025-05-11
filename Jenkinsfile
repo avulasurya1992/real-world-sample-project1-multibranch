@@ -69,8 +69,7 @@ pipeline {
                             rm -rf ${REPO_DIR};
                             git clone ${REPO_URL} ${REPO_DIR};
                             cd ${REPO_DIR};
-                            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                        '
+                            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
                     """
                 }
             }
@@ -88,8 +87,7 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
                                 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
                                 echo "${NEXUS_REGISTRY_PASSWORD}" | docker login -u "${NEXUS_REGISTRY_USER}" --password-stdin ${NEXUS_REGISTRY};
-                                docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
-                            '
+                                docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}'
                         """
                     }
                 }
@@ -99,7 +97,7 @@ pipeline {
         stage('Export Kubeconfig') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'aws-jenkins-creds',  // AWS credentials
+                    credentialsId: 'aws-jenkins-creds',
                     usernameVariable: 'AWS_ACCESS_KEY_ID',
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
@@ -121,11 +119,13 @@ pipeline {
                     passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
                 )]) {
                     sh '''
+                        export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
+                        export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
                         kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
                         kubectl create secret docker-registry ${SECRET_NAME} \
                             --docker-server=${NEXUS_REGISTRY} \
-                            --docker-username="${NEXUS_REGISTRY_USER}" \
-                            --docker-password="${NEXUS_REGISTRY_PASSWORD}" \
+                            --docker-username="${DOCKER_USERNAME}" \
+                            --docker-password="${DOCKER_PASSWORD}" \
                             --docker-email=jenkins@nexus.com \
                             --namespace=${KUBE_NAMESPACE}
                     '''
@@ -150,7 +150,7 @@ pipeline {
             echo '✅ Build, SonarQube analysis, Docker push, and Kubernetes deployment completed successfully.'
         }
         failure {
-            echo '❌ Pipeline failed.'
+            echo '❌ Build failed.'
         }
     }
 }
