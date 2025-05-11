@@ -46,7 +46,7 @@ pipeline {
                 }
             }
         }
-        /*
+        
         stage('Quality Gate') {
             steps {
                 timeout(time: 3, unit: 'MINUTES') {
@@ -54,7 +54,7 @@ pipeline {
                 }
             }
         }
-
+        /*
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image on remote Docker host"
