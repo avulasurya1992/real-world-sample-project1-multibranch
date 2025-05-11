@@ -122,15 +122,16 @@ pipeline {
                     sh '''
                         export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
                         export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
-                        
-                        # Disable interactive prompting by kubectl
+
+                        # Ensure non-interactive input by setting environment variables
                         kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
                         kubectl create secret docker-registry ${SECRET_NAME} \
                             --docker-server=${NEXUS_REGISTRY} \
                             --docker-username="${DOCKER_USERNAME}" \
                             --docker-password="${DOCKER_PASSWORD}" \
                             --docker-email=jenkins@nexus.com \
-                            --namespace=${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                            --namespace=${KUBE_NAMESPACE} \
+                            --dry-run=client -o yaml | kubectl apply -f -
                     '''
                 }
             }
