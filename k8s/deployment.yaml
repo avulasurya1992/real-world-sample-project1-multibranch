@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: my-httpd-site
-        image: 13.232.158.95:5000/my-httpd-site:latest
+        image: 65.0.26.117:8082/my-httpd-site:latest
         ports:
         - containerPort: 80
       imagePullSecrets:
