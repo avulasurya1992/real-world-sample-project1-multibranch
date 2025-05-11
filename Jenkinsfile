@@ -71,7 +71,7 @@ pipeline {
                 }
             }
         }
-        /*
+        
         stage('Push Docker Image to Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -79,9 +79,9 @@ pipeline {
                     usernameVariable: 'DOCKER_USERNAME',
                     passwordVariable: 'DOCKER_PASSWORD'
                 )]) {
-                    sshagent(credentials: [SSH_KEY_ID]) {
+                    sshagent(credentials: [dockerhost_ssh_key]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.4.10 '
+                            ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
                                 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
                                 echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
                                 docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
@@ -91,7 +91,7 @@ pipeline {
                 }
             }
         }
-
+        /*
         stage('Deploy to Kubernetes') {
             steps {
                 echo "Deploying application to Kubernetes cluster"
