@@ -106,7 +106,7 @@ pipeline {
                         export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
                         export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
                         export KOPS_STATE_STORE=s3://surya-k8-cluster-1
-                        kops export kubecfg --name ${CLUSTER_NAME}
+                        kops export kubecfg --name ${CLUSTER_NAME} --admin
                     '''
                 }
             }
