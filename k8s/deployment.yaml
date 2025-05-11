@@ -13,9 +13,9 @@ spec:
         app: my-httpd-site
     spec:
       containers:
-      - name: my-httpd-site
-        image: 65.0.26.117:8082/my-httpd-site:latest
-        ports:
-        - containerPort: 80
+        - name: my-httpd-site
+          image: 65.0.26.117:8082/my-httpd-site:latest
+          ports:
+            - containerPort: 80
       imagePullSecrets:
-      - name: nexus-creds
+        - name: nexus-creds
