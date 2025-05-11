@@ -38,12 +38,12 @@ pipeline {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     withCredentials([string(credentialsId: 'sonarqube-auth', variable: 'SONAR_TOKEN')]) {
                         sh """
-                            ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \\
-                            -Dsonar.projectKey=sample-project1 \\
-                            -Dsonar.sources=. \\
-                            -Dsonar.projectName=sample-project1 \\
-                            -Dsonar.exclusions=**/Dockerfile \\
-                            -Dsonar.host.url=http://13.233.113.199:9000 \\
+                            ${tool SONARQUBE_SCANNER}/bin/sonar-scanner \\ 
+                            -Dsonar.projectKey=sample-project1 \\ 
+                            -Dsonar.sources=. \\ 
+                            -Dsonar.projectName=sample-project1 \\ 
+                            -Dsonar.exclusions=**/Dockerfile \\ 
+                            -Dsonar.host.url=http://13.233.113.199:9000 \\ 
                             -Dsonar.login=$SONAR_TOKEN
                         """
                     }
@@ -120,18 +120,16 @@ pipeline {
                     passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
                 )]) {
                     sh '''
-                        export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
-                        export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
-
-                        # Ensure non-interactive input by setting environment variables
+                        # Delete the existing secret if it exists
                         kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
+
+                        # Create the new secret directly with --from-literal to pass the credentials
                         kubectl create secret docker-registry ${SECRET_NAME} \
                             --docker-server=${NEXUS_REGISTRY} \
-                            --docker-username="${DOCKER_USERNAME}" \
-                            --docker-password="${DOCKER_PASSWORD}" \
+                            --from-literal=username="${NEXUS_REGISTRY_USER}" \
+                            --from-literal=password="${NEXUS_REGISTRY_PASSWORD}" \
                             --docker-email=jenkins@nexus.com \
-                            --namespace=${KUBE_NAMESPACE} \
-                            --dry-run=client -o yaml | kubectl apply -f -
+                            --namespace=${KUBE_NAMESPACE}
                     '''
                 }
             }
