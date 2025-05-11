@@ -79,15 +79,16 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                    usernameVariable: 'NEXUS_REGISTRY_USER',
-                    passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
                 )]) {
                     sshagent(credentials: [dockerhost_ssh_key]) {
                         sh """
                             ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
                                 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
-                                echo "${NEXUS_REGISTRY_PASSWORD}" | docker login -u "${NEXUS_REGISTRY_USER}" --password-stdin ${NEXUS_REGISTRY};
-                                docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}'
+                                echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
+                                docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                            '
                         """
                     }
                 }
@@ -97,7 +98,7 @@ pipeline {
         stage('Export Kubeconfig') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'aws-jenkins-creds',
+                    credentialsId: 'aws-jenkins-creds',  // AWS credentials
                     usernameVariable: 'AWS_ACCESS_KEY_ID',
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
@@ -121,13 +122,15 @@ pipeline {
                     sh '''
                         export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
                         export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
+                        
+                        # Disable interactive prompting by kubectl
                         kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
                         kubectl create secret docker-registry ${SECRET_NAME} \
                             --docker-server=${NEXUS_REGISTRY} \
                             --docker-username="${DOCKER_USERNAME}" \
                             --docker-password="${DOCKER_PASSWORD}" \
                             --docker-email=jenkins@nexus.com \
-                            --namespace=${KUBE_NAMESPACE}
+                            --namespace=${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                     '''
                 }
             }
@@ -147,10 +150,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build, SonarQube analysis, Docker push, and Kubernetes deployment completed successfully.'
+            echo '✅ Build, analysis, Docker push, and deployment completed successfully.'
         }
         failure {
-            echo '❌ Build failed.'
+            echo '❌ Pipeline failed.'
         }
     }
 }
