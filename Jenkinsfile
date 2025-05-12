@@ -150,7 +150,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build, analysis, Docker push, and deployment completed successfully.'
+            echo '✅ Build, analysis and Docker push, and deployment completed successfully.'
         }
         failure {
             echo '❌ Pipeline failed.'
