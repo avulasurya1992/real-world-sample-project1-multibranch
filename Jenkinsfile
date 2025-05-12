@@ -97,14 +97,11 @@ pipeline {
 
         stage('Export Kubeconfig') {
             steps {
-               
-                    sh '''
-                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                        export KOPS_STATE_STORE=s3://surya-k8-cluster-1
-                        kops export kubecfg --name ${CLUSTER_NAME} --admin
-                    '''
-                }
+                sh '''
+                    export KOPS_STATE_STORE=${KOPS_STATE_STORE}
+                    kops export kubecfg --name ${CLUSTER_NAME} --admin
+                '''
+            }
         }
 
         stage('Create Kubernetes Secret for Nexus Docker Registry') {
@@ -115,15 +112,11 @@ pipeline {
                     passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
                 )]) {
                     sh '''
-                        export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
-                        export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
-                        
-                        # Disable interactive prompting by kubectl
                         kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
                         kubectl create secret docker-registry ${SECRET_NAME} \
                             --docker-server=${NEXUS_REGISTRY} \
-                            --docker-username="${DOCKER_USERNAME}" \
-                            --docker-password="${DOCKER_PASSWORD}" \
+                            --docker-username="${NEXUS_REGISTRY_USER}" \
+                            --docker-password="${NEXUS_REGISTRY_PASSWORD}" \
                             --docker-email=jenkins@nexus.com \
                             --namespace=${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                     '''
@@ -145,12 +138,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build, analysis and Docker push, and deployment completed successfully.'
+            echo '✅ Build, analysis, Docker push, and deployment completed successfully.'
         }
         failure {
             echo '❌ Pipeline failed.'
         }
     }
 }
-
-
