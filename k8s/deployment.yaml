@@ -2,8 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-httpd-site
+  labels:
+    app: my-httpd-site
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: my-httpd-site
@@ -14,8 +16,6 @@ spec:
     spec:
       containers:
         - name: my-httpd-site
-          image: 65.0.26.117:8082/my-httpd-site:latest
+          image: my-httpd-site:latest  # Change to your public image if using DockerHub
           ports:
             - containerPort: 80
-      imagePullSecrets:
-        - name: nexus-creds
