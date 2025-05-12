@@ -10,9 +10,8 @@ pipeline {
         REPO_URL = "https://github.com/avulasurya1992/real-world-sample-project1-multibranch.git"
         REPO_DIR = "real-world-sample-project1-multibranch"
         dockerhost_ssh_key = 'docker-host-creds'
-        NEXUS_REGISTRY = "13.201.34.113:8082"
+        NEXUS_REGISTRY = "65.0.26.117:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
-        AWS_CREDENTIALS_ID = 'aws-jenkins-creds' // <-- Replace with your actual AWS credentials ID in Jenkins
         KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
         CLUSTER_NAME = 'test.k8s.local'
         SECRET_NAME = 'nexus-creds'
@@ -96,36 +95,15 @@ pipeline {
             }
         }
 
-        stage('Configure AWS Credentials') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDENTIALS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    sh '''
-                        echo "✅ AWS credentials configured in environment"
-                    '''
-                }
-            }
-        }
-
         stage('Export Kubeconfig') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDENTIALS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    sh '''
-                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                        export KOPS_STATE_STORE=${KOPS_STATE_STORE}
-                        kops export kubecfg --name ${CLUSTER_NAME} --admin
-                    '''
-                }
+                echo "Exporting kubeconfig for Kubernetes cluster"
+                sh '''
+                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                    export KOPS_STATE_STORE=s3://surya-k8-cluster-1
+                    kops export kubecfg --name ${CLUSTER_NAME} --admin --state=${KOPS_STATE_STORE}
+                '''
             }
         }
 
@@ -137,11 +115,15 @@ pipeline {
                     passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
                 )]) {
                     sh '''
+                        export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
+                        export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
+                        
+                        # Disable interactive prompting by kubectl
                         kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
                         kubectl create secret docker-registry ${SECRET_NAME} \
                             --docker-server=${NEXUS_REGISTRY} \
-                            --docker-username="${NEXUS_REGISTRY_USER}" \
-                            --docker-password="${NEXUS_REGISTRY_PASSWORD}" \
+                            --docker-username="${DOCKER_USERNAME}" \
+                            --docker-password="${DOCKER_PASSWORD}" \
                             --docker-email=jenkins@nexus.com \
                             --namespace=${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                     '''
@@ -163,7 +145,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build, analysis, Docker push, and deployment completed successfully.'
+            echo '✅ Build, analysis and Docker push, and deployment completed successfully.'
         }
         failure {
             echo '❌ Pipeline failed.'
