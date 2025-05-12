@@ -4,13 +4,13 @@ pipeline {
     environment {
         SONARQUBE_SCANNER = 'sonar-scanner'
         SONARQUBE_SERVER  = 'SonarQubeServer'
-        DOCKER_HOST = "ssh://ec2-user@15.206.91.34"
+        DOCKER_HOST = "ssh://ec2-user@65.0.134.20"
         IMAGE_NAME = "my-httpd-site"
         IMAGE_TAG = "latest"
         REPO_URL = "https://github.com/avulasurya1992/real-world-sample-project1-multibranch.git"
         REPO_DIR = "real-world-sample-project1-multibranch"
         dockerhost_ssh_key = 'docker-host-creds'
-        NEXUS_REGISTRY = "65.0.26.117:8082"
+        NEXUS_REGISTRY = "13.201.34.113:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
         KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
         CLUSTER_NAME = 'test.k8s.local'
@@ -64,7 +64,7 @@ pipeline {
                 echo "Building Docker image on remote Docker host"
                 sshagent(credentials: [dockerhost_ssh_key]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.0.134.20 '
                             set -e; set -x;
                             rm -rf ${REPO_DIR};
                             git clone ${REPO_URL} ${REPO_DIR};
@@ -84,7 +84,7 @@ pipeline {
                 )]) {
                     sshagent(credentials: [dockerhost_ssh_key]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@15.206.91.34 '
+                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.134.20 '
                                 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
                                 echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
                                 docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
