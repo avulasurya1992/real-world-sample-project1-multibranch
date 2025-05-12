@@ -10,7 +10,7 @@ pipeline {
         REPO_URL = "https://github.com/avulasurya1992/real-world-sample-project1-multibranch.git"
         REPO_DIR = "real-world-sample-project1-multibranch"
         dockerhost_ssh_key = 'docker-host-creds'
-        NEXUS_REGISTRY = "65.0.26.117:8082"
+        NEXUS_REGISTRY = "http://65.0.26.117:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
         KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
         CLUSTER_NAME = 'test.k8s.local'
