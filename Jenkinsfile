@@ -12,6 +12,7 @@ pipeline {
         dockerhost_ssh_key = 'docker-host-creds'
         NEXUS_REGISTRY = "13.201.34.113:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
+        AWS_CREDENTIALS_ID = 'aws-jenkins-creds' // <-- Add your Jenkins AWS credentials ID here
         KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
         CLUSTER_NAME = 'test.k8s.local'
         SECRET_NAME = 'nexus-creds'
@@ -91,6 +92,21 @@ pipeline {
                             '
                         """
                     }
+                }
+            }
+        }
+
+        stage('Configure AWS Credentials') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: "${AWS_CREDENTIALS_ID}",
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    sh '''
+                        echo "✅ AWS credentials configured in environment"
+                    '''
                 }
             }
         }
