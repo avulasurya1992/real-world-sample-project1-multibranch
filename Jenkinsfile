@@ -12,7 +12,7 @@ pipeline {
         dockerhost_ssh_key = 'docker-host-creds'
         NEXUS_REGISTRY = "13.201.34.113:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
-        AWS_CREDENTIALS_ID = 'aws-jenkins-creds' // <-- Add your Jenkins AWS credentials ID here
+        AWS_CREDENTIALS_ID = 'aws-jenkins-creds' // <-- Replace with your actual AWS credentials ID in Jenkins
         KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
         CLUSTER_NAME = 'test.k8s.local'
         SECRET_NAME = 'nexus-creds'
@@ -113,10 +113,19 @@ pipeline {
 
         stage('Export Kubeconfig') {
             steps {
-                sh '''
-                    export KOPS_STATE_STORE=${KOPS_STATE_STORE}
-                    kops export kubecfg --name ${CLUSTER_NAME} --admin
-                '''
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: "${AWS_CREDENTIALS_ID}",
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    sh '''
+                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                        export KOPS_STATE_STORE=${KOPS_STATE_STORE}
+                        kops export kubecfg --name ${CLUSTER_NAME} --admin
+                    '''
+                }
             }
         }
 
