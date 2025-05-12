@@ -97,13 +97,7 @@ pipeline {
 
         stage('Export Kubeconfig') {
             steps {
-             /*   withCredentials([usernamePassword(
-                    credentialsId: 'aws-jenkins-creds',  // AWS credentials
-                    usernameVariable: 'AWS_ACCESS_KEY_ID',
-                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                )])
-            */
-                {
+               
                     sh '''
                         export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
                         export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
@@ -111,7 +105,6 @@ pipeline {
                         kops export kubecfg --name ${CLUSTER_NAME} --admin
                     '''
                 }
-            }
         }
 
         stage('Create Kubernetes Secret for Nexus Docker Registry') {
