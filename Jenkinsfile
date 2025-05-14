@@ -104,7 +104,7 @@ pipeline {
                         export KUBECONFIG=${KUBECONFIG}
 
                         # Ensure to use the correct context if there are multiple contexts
-                        kubectl --kubeconfig=${KUBECONFIG} config use-context jenkins-context
+                        kubectl --kubeconfig=${KUBECONFIG} config use-context test.k8s.local
 
                         # Apply the deployment and service
                         kubectl --kubeconfig=${KUBECONFIG} apply -f k8s/deployment.yaml
