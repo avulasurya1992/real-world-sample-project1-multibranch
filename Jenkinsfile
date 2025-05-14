@@ -95,7 +95,7 @@ pipeline {
                 }
             }
         }
-
+        /*
         stage('Export Kubeconfig') {
             steps {
                 echo "Exporting kubeconfig for Kubernetes cluster"
@@ -107,7 +107,7 @@ pipeline {
                 '''
             }
         }
-
+        */
         stage('Create Kubernetes Secret for Nexus Docker Registry') {
             steps {
                 withCredentials([usernamePassword(
