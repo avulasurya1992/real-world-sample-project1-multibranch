@@ -100,9 +100,16 @@ pipeline {
                 echo "Deploying application to Kubernetes cluster"
                 withCredentials([file(credentialsId: 'kubeconfig-creds', variable: 'KUBECONFIG')]) {
                     sh '''
-                        kubectl apply -f k8s/deployment.yaml
-                        kubectl apply -f k8s/service.yaml
-                        kubectl rollout status deployment/my-httpd-site
+                        # Optionally set the kubeconfig file location if needed
+                        export KUBECONFIG=${KUBECONFIG}
+
+                        # Ensure to use the correct context if there are multiple contexts
+                        kubectl --kubeconfig=${KUBECONFIG} config use-context jenkins-context
+
+                        # Apply the deployment and service
+                        kubectl --kubeconfig=${KUBECONFIG} apply -f k8s/deployment.yaml
+                        kubectl --kubeconfig=${KUBECONFIG} apply -f k8s/service.yaml
+                        kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/my-httpd-site
                     '''
                 }
             }
