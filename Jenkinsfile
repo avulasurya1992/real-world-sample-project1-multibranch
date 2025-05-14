@@ -15,7 +15,6 @@ pipeline {
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
         KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
         CLUSTER_NAME = 'test.k8s.local'
-        SECRET_NAME = 'nexus-creds'
         KUBE_NAMESPACE = 'default'
     }
 
@@ -92,41 +91,6 @@ pipeline {
                             '
                         """
                     }
-                }
-            }
-        }
-        /*
-        stage('Export Kubeconfig') {
-            steps {
-                echo "Exporting kubeconfig for Kubernetes cluster"
-                sh '''
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    export KOPS_STATE_STORE=s3://surya-k8-cluster-1
-                    kops export kubecfg --name ${CLUSTER_NAME} --admin --state=${KOPS_STATE_STORE}
-                '''
-            }
-        }
-        */
-        stage('Create Kubernetes Secret for Nexus Docker Registry') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                    usernameVariable: 'NEXUS_REGISTRY_USER',
-                    passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
-                )]) {
-                    sh '''
-                        export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
-                        export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
-                        
-                        kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
-                        kubectl create secret docker-registry ${SECRET_NAME} \
-                            --docker-server=${NEXUS_REGISTRY} \
-                            --docker-username="${DOCKER_USERNAME}" \
-                            --docker-password="${DOCKER_PASSWORD}" \
-                            --docker-email=jenkins@nexus.com \
-                            --namespace=${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                    '''
                 }
             }
         }
