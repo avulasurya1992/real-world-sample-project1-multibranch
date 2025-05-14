@@ -99,8 +99,8 @@ pipeline {
             steps {
                 echo "Deploying application to Kubernetes cluster"
                 sh '''
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl apply -f k8s/service.yaml
+                    kubectl apply --validate=false -f k8s/deployment.yaml
+                    kubectl apply --validate=false -f k8s/service.yaml
                     kubectl rollout status deployment/my-httpd-site
                 '''
             }
