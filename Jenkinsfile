@@ -98,11 +98,13 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 echo "Deploying application to Kubernetes cluster"
-                sh '''
-                    kubectl apply --validate=false -f k8s/deployment.yaml
-                    kubectl apply --validate=false -f k8s/service.yaml
-                    kubectl rollout status deployment/my-httpd-site
-                '''
+                withCredentials([file(credentialsId: 'kubeconfig-creds', variable: 'KUBECONFIG')]) {
+                    sh '''
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                        kubectl rollout status deployment/my-httpd-site
+                    '''
+                }
             }
         }
     }
