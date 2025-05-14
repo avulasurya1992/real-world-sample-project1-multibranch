@@ -11,6 +11,7 @@ pipeline {
         REPO_DIR = "real-world-sample-project1-multibranch"
         dockerhost_ssh_key = 'docker-host-creds'
         NEXUS_REGISTRY = "http://52.66.145.128:8082"
+        NEXUS_REGISTRY_HOST = "52.66.145.128:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
         KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
         CLUSTER_NAME = 'test.k8s.local'
@@ -85,9 +86,9 @@ pipeline {
                     sshagent(credentials: [dockerhost_ssh_key]) {
                         sh """
                             ssh -o StrictHostKeyChecking=no ec2-user@43.205.99.36 '
-                                docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
+                                docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY_HOST}/${IMAGE_NAME}:${IMAGE_TAG};
                                 echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
-                                docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                                docker push ${NEXUS_REGISTRY_HOST}/${IMAGE_NAME}:${IMAGE_TAG}
                             '
                         """
                     }
@@ -118,7 +119,6 @@ pipeline {
                         export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
                         export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
                         
-                        # Disable interactive prompting by kubectl
                         kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
                         kubectl create secret docker-registry ${SECRET_NAME} \
                             --docker-server=${NEXUS_REGISTRY} \
