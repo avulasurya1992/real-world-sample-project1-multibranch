@@ -4,15 +4,14 @@ pipeline {
     environment {
         SONARQUBE_SCANNER = 'sonar-scanner'
         SONARQUBE_SERVER  = 'SonarQubeServer'
-        DOCKER_HOST = "ssh://ec2-user@65.0.134.20"
+        DOCKER_HOST = "ssh://ec2-user@43.205.99.36"
         IMAGE_NAME = "my-httpd-site"
         IMAGE_TAG = "latest"
         REPO_URL = "https://github.com/avulasurya1992/real-world-sample-project1-multibranch.git"
         REPO_DIR = "real-world-sample-project1-multibranch"
         dockerhost_ssh_key = 'docker-host-creds'
-        NEXUS_REGISTRY = "13.201.34.113:8082"
+        NEXUS_REGISTRY = "http://52.66.145.128:8082"
         NEXUS_CREDENTIALS_ID = 'nexus-host-cred'
-        AWS_CREDENTIALS_ID = 'aws-jenkins-creds' // <-- Replace with your actual AWS credentials ID in Jenkins
         KOPS_STATE_STORE = 's3://surya-k8-cluster-1'
         CLUSTER_NAME = 'test.k8s.local'
         SECRET_NAME = 'nexus-creds'
@@ -44,7 +43,7 @@ pipeline {
                             -Dsonar.sources=. \\
                             -Dsonar.projectName=sample-project1 \\
                             -Dsonar.exclusions=**/Dockerfile \\
-                            -Dsonar.host.url=http://13.233.223.8:9000 \\
+                            -Dsonar.host.url=http://3.110.132.145:9000 \\
                             -Dsonar.login=$SONAR_TOKEN
                         """
                     }
@@ -65,7 +64,7 @@ pipeline {
                 echo "Building Docker image on remote Docker host"
                 sshagent(credentials: [dockerhost_ssh_key]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ec2-user@65.0.134.20 '
+                        ssh -o StrictHostKeyChecking=no ec2-user@43.205.99.36 '
                             set -e; set -x;
                             rm -rf ${REPO_DIR};
                             git clone ${REPO_URL} ${REPO_DIR};
@@ -85,7 +84,7 @@ pipeline {
                 )]) {
                     sshagent(credentials: [dockerhost_ssh_key]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@65.0.134.20 '
+                            ssh -o StrictHostKeyChecking=no ec2-user@43.205.99.36 '
                                 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG};
                                 echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin ${NEXUS_REGISTRY};
                                 docker push ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
@@ -96,34 +95,37 @@ pipeline {
             }
         }
 
-        stage('Configure AWS Credentials') {
+        stage('Export Kubeconfig') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDENTIALS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    sh '''
-                        echo "✅ AWS credentials configured in environment"
-                    '''
-                }
+                echo "Exporting kubeconfig for Kubernetes cluster"
+                sh '''
+                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                    export KOPS_STATE_STORE=s3://surya-k8-cluster-1
+                    kops export kubecfg --name ${CLUSTER_NAME} --admin --state=${KOPS_STATE_STORE}
+                '''
             }
         }
 
-        stage('Export Kubeconfig') {
+        stage('Create Kubernetes Secret for Nexus Docker Registry') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: "${AWS_CREDENTIALS_ID}",
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
+                withCredentials([usernamePassword(
+                    credentialsId: "${NEXUS_CREDENTIALS_ID}",
+                    usernameVariable: 'NEXUS_REGISTRY_USER',
+                    passwordVariable: 'NEXUS_REGISTRY_PASSWORD'
+                )]) {
                     sh '''
-                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                        export KOPS_STATE_STORE=${KOPS_STATE_STORE}
-                        kops export kubecfg --name ${CLUSTER_NAME} --admin
+                        export DOCKER_USERNAME="${NEXUS_REGISTRY_USER}"
+                        export DOCKER_PASSWORD="${NEXUS_REGISTRY_PASSWORD}"
+                        
+                        # Disable interactive prompting by kubectl
+                        kubectl delete secret ${SECRET_NAME} --namespace=${KUBE_NAMESPACE} --ignore-not-found=true || true
+                        kubectl create secret docker-registry ${SECRET_NAME} \
+                            --docker-server=${NEXUS_REGISTRY} \
+                            --docker-username="${DOCKER_USERNAME}" \
+                            --docker-password="${DOCKER_PASSWORD}" \
+                            --docker-email=jenkins@nexus.com \
+                            --namespace=${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                     '''
                 }
             }
@@ -143,7 +145,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build, analysis, Docker push, and deployment completed successfully.'
+            echo '✅ Build, analysis and Docker push, and deployment completed successfully.'
         }
         failure {
             echo '❌ Pipeline failed.'
