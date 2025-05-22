@@ -1,0 +1,498 @@
+Dev Environment Working steps:-
+
+Build a user workstation with httpd and git install - name it as “user-workstation” 
+status:- done
+-----------------------------------------------------------------------------------------------
+Create a project repo with branches – name it as “real-world-sample-project1-multibranch”
+status:- done
+-----------------------------------------------------------------------------------------------
+Verify the output from the browser.
+status:- done
+-----------------------------------------------------------------------------------------------
+Launch a jenkins server – name it as “sample-project1-multibranch-jenkins”.
+status:- username:admin password:admin
+
+--------> Configure webhook in github repository.
+
+url: http://65.2.34.255:8080/github-webhook/
+
+------------------------------------------------------------------------------------------------
+
+*******Observations and extra practice to achieve goal:-
+
+***created a sample freestyle job and webhook triggered the job. worked successfully.
+
+***created a pipeline job and check the webhook trigger.(checking the logs in jenkins ui whether github push event coming to jenkins. manage jenkins -> system log -> all jenkins logs). check any other job getting the push events. (identified that jenkins triggering multibranch pipeline which was deleted. mean it has cache and always trying to push event to multibranch job.
+
+troubleshooting steps:- 1)restart jenkins service
+2) we need to clear the cache not to trigger old deleted job data. path to get all folders like logs, workspace, jobs (/var/lib/jenkins/). check the relavent and delete old content.
+3) if still facing the issue, delete old webhook, create a new webhook. restart the jenkins server. create a push to jenkins and check logs whether new webhook connected.
+4) if still not triggering the for push event, manually trigger the job first and then try again. ( here resolved the issue)
+
+**************Pipeline jobs (non-multibranch) need to be built at least once manually before they respond to SCM triggers like webhooks.
+
+***create multiple pipeline jobs (or) one free style and one pipeline job to get push event from git. check the build.( jenkins will trigger the all jobs)
+http://13.126.9.176:8080/github-webhook/
+https://github.com/avulasurya1992/real-world-sample-project1-multibranch.git
+
+----------------------------------------------------------------------------------------------------
+
+*******Observations and extra practice to achieve goal:-
+
+
+multibranch pipeline has different options and approach for webhook triggering. 
+it is using jenkins file and asking some options for multibraching.
+
+
+*** Why Both(Multibranch or Pipeline) Can't Use the Same Push Events
+Only one Jenkins job (Multibranch or Pipeline) can reliably respond to GitHub push events for a given repo.
+This is because:GitHub sends the same webhook payload to Jenkins
+Jenkins must decide which job to trigger
+If both jobs are listening to the same webhook:
+Only one (usually the multibranch one) will process it correctly
+The other may not react or behave unpredictably
+
+
+-----------------------------------------------------------------------------------------------------
+
+create a multibranch pipeline and configure it to get auto trigger.
+
+while creating multibranch pipeline - source need to select github only (not git). git is SCM and it has support for multiple tools like github, bit bucket but github is the tool for scm we are using.
+
+add github url with credentails (add github username and github personal access token in jenkins credentails tab) and validate it.(if u dont add github credentials and validate then the jenkins get limited github api calls. because of that job will run longer time)
+
+write Jenkinsfile and add it to repo.
+
+mandatory steps to create:- 
+Git repo URL	✅	Must be valid and accessible from Jenkins
+Jenkinsfile in each branch	✅	At root of repo, or set custom path
+Credentials (if private)	✅	SSH or personal token credentials
+Webhook configured	✅	To trigger builds on push/PR
+Branch source (Git/GitHub)	✅	Select correct source type
+Periodic scan trigger	🔄 Optional	Good fallback if webhooks fail
+
+job auto triggering -- done
+
+----------------------------------------------------------------------------------------------------------
+
+once job success then it should scan the code using sonarqube 
+
+*** To configure SonarQube in Jenkins, you'll need to set up both SonarQube server in system configuration and install SonarQube scanner plugin in Jenkins.
+add sonarqube server details in system configuration ui. add sonarqube scanner in tools ui. 
+
+Launch a sonarqube server separately - name it as “sample-project1-multibranch-sonarqube”
+username:admin password:- admin123
+
+create a project in sonarqube named as sample-project1
+
+project key:sample-project1 token:- squ_a532df57ed9b6dcd5d08d163a742e2052607b54f
+generate token in sonarqube (myaccount->security) and add credentials in jenkins with secret text and name it as sonarqube-auth or as name in pipleine.
+
+
+Pipeline job auto triggering and sending report to sonarqube server is done.
+ 
+----------------------------------------------------------------------------------------------------
+
+now need to make the sonarqube with qualitycheck passed or failed status back to jenkins and proceed further. 
+use this waitForQualityGate() and if it is pass then make a docker image.
+
+create webhook in project created in sonarqube.
+
+add project specific webhook in sonarqube. open project -> project settings -> add webhook-> with name(sample-project1) and url (jenkins-ip:port/sonarqube-webhook/ like http://13.235.19.64:8080/sonarqube-webhook/). once done check the show recent deliverable. it shows sonarqube can connect with jenkins to send the analysis result.
+
+add waitforqualitygate() in pipeline to get result and make build success or fail depend on sonarqube result.
+
+stage('Quality Gate') {
+    steps {
+        timeout(time: 3, unit: 'MINUTES') {
+            waitForQualityGate abortPipeline: true
+        }
+    }
+
+note: sample dockerfiles sometime not pass sonarqube analysis so we can exclude it in pipeline. mean sonar exclude analysis of dockerfile so that it will pass.
+
+-------------------------------------------------------------------------------------------------------------
+
+if no errors in sonarqube, it should create a docker image. ( to create a docker image we need to install a docker server and build image and to connect docker host we use ssh method)
+
+need to install ssh-agent plugin to connect servers from jenkins using ssh. install git on docker host to clone repo for creating docker image.
+
+note:-
+while doing use rm -rf command so that everytime we clear the directory to avoid errors.
+don't use eof block in docker stage. (chatgpt suggesting that but getting error. try once u understand eof concept)
+
+to connect docker host from jenkins server
+
+🟨 Summary: Which One to Use?
+Use Case	Method	Secure?	Recommended
+Simple & Secure	SSH to Docker host	✅✅✅	✅ Best for simplicity
+Fast API-based	Docker Remote API + TLS	✅✅✅	✅ Advanced setups
+Jenkins-in-Docker environments	Docker Agent Plugin	✅	✅ for dynamic builds
+Native Docker CLI on Jenkins	DOCKER_HOST + CLI tools	✅	✅ if Jenkins is CLI-ready
+
+
+Successfully created the container and verified the output in browser. 
+http://public-ip-docker:port-no-container-using 
+
+Note: Use underscores (_) instead of dashes(-)in variable names
+dockerhost_ssh_key = 'docker-host-creds'
+- is an arithmetic operator, and variable names can't contain dashes.
+
+----------------------------------------------------------------------------------------------------------------
+
+docker image need to push to nexus server. 
+
+nexus server install. create a repository using docker hosted and http port (***don't check "Allow anonymous docker pull ( Docker Bearer Token Realm required )")
+repo should create and name : sample-project1 http-port: 8082
+
+add nexus credentials in jenkins
+
+changes to be done in jenkins pipeline. environment variables : nexus repository value , nexus credentials value.
+
+in docker image build stage and push image to nexus stage change the ssh to dockerhost ip ex: ec2-user@docker-ip
+
+here we get https response for http nexus repo so we need to exclude our repo. so ssh to docker host and do below steps:
+Open or create the Docker daemon configuration file: sudo vi /etc/docker/daemon.json
+add this block: 
+{
+  "insecure-registries" : ["13.201.34.113:8082"]
+}
+save and exit.
+
+sudo systemctl restart docker
+
+then try execute the pipeline.
+
+
+if error related to connection establishment then ((check the connectivity between docker and nexus. ssh to docker server and try to connect nexus using docker login public-ip:repo-port-given-creation
+enter credentials it will succeed.(try 3 to 4 times if fails at first time and check the errors)))
+
+then write the pipeline script to push image from docker to nexus repo(here nexus repo acting as docker registry)
+
+job got success
+
+verify the nexus repository that image got pushed and output of index.html by accessing it from browser.
+
+in nexus repo --- u can use url of the repo to check the content or browse option -> select the corner arrow of the repo lines
+
+-------------------------------------------------------------------------------------------------------
+
+deploy the docker image in kubernetes cluster. (create a kubenetes cluster using kops and aws. use two k8 worker nodes only. configure jenkins pipeline and cluster to deploy docker image)
+
+create kubernetes cluster using playbooks and with the help of kubernetes notes. 
+
+**** sometimes ips not assigned because we using free time account. keep that in mind for any ip related errors.
+
+
+before pipeline below settings need to be done.
+
+
+****kubernetes workstation need below applications to create a cluster and deploy app
+
+# Install kubectl
+
+# Install kOps
+
+#AWS CLI
+
+# aws cli configure  (administrator privileges user like testuser2)
+
+# ssh-keygen
+
+using kubernetes notes
+
+---
+
+***Configure AWS CLI with test-user-2 ( which was created using iam-kubernetes-user.yml) (otherwise create kubernetes don't know with whom id it need to create resources)
+
+******Create Cluster (if not created)**
+
+If you don’t have the Kubernetes cluster created yet, use `kops create cluster` to provision it.
+
+```bash
+kops create cluster \
+  --name=test.k8s.local \
+  --state=s3://surya-k8-cluster-1 \
+  --zones=ap-south-1a,ap-south-1b \
+  --node-count=2 \
+  --ssh-public-key ~/.ssh/id_rsa.pub \
+  --yes
+```
+
+This will create the necessary resources (e.g., EC2 instances, VPC, subnets) based on the configuration you defined.
+
+Wait for 10min and then validate the cluster using the below command. (check the kubernetes master node and worker nodes running or not. if not running getting below error (or) not created then check no. of instances running and stop unnecessary servers. then delete the cluster using below command and create the cluster again and check)
+
+error example: validation failed: unexpected error during validation: error listing nodes: Get "https://api-test-k8s-local-7afed8-64e0d9c22e1240c0.elb.ap-south-1.amazonaws.com/api/v1/nodes": dial tcp 13.126.57.70:443: i/o timeout
+
+Note:- Ubuntu machines being created when you run the kops create cluster command is that Kops uses Ubuntu as the default AMI (Amazon Machine Image) for both control plane and worker nodes unless you specify otherwise.
+check the ssh connection: ssh -i ~/.ssh/id_rsa ubuntu@13.234.48.92
+
+kubectl is used to interact with and operate operations a running Kubernetes cluster, and kops is used to create and manage the infrastructure and configuration of the Kubernetes cluster itself.
+
+kops validate cluster --name=test.k8s.local --state=s3://surya-k8-cluster-1
+
+kops delete cluster --name=test.k8s.local --state=s3://surya-k8-cluster-1 --yes
+
+---
+
+*******do ssh to worker nodes and need to allow them to access http image so do below modifications on kubernetes worker nodes
+
+ssh -i ~/.ssh/id_rsa ubuntu@<ec2-public-ip>
+
+if docker running in workerstations:
+
+sudo vi /etc/docker/daemon.json add the below content
+{
+  "insecure-registries": ["13.201.34.113:8082"]
+}
+
+save and exit. (nexus repo ip and repo port given). 
+sudo systemctl restart docker
+(13.201.34.113:8082)
+
+
+Note:---- sometimes kops use anthoer runtimes called another runtime like "containerd" or "CRI-O" in nodes instead of docker. then we can't find the file etc/docker/daemon.json. I got containerd worker node machine follow the below steps to exclude the http nexus repo and get the image deployment.
+
+ssh -i ~/.ssh/id_rsa ubuntu@<ec2-public-ip>
+
+
+sudo vi /etc/containerd/config.toml
+
+
+
+version = 2
+
+[plugins]
+
+  [plugins."io.containerd.grpc.v1.cri"]
+    sandbox_image = "registry.k8s.io/pause:3.9@sha256:7031c1b283388d2c2e09b57badb803c05ebed362dc88d84b480cc47f72a21097"
+
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
+
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
+
+    # ✅ Correct block for insecure registry access
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."13.233.206.88:8082"]
+      endpoint = ["http://13.233.206.88:8082"]
+
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."13.233.206.88:8082".tls]
+      insecure_skip_verify = true
+
+
+---
+
+Note:  To pull an image from this Nexus registry in Kubernetes, the image name must follow the Nexus Docker Registry or docker registry format, not the raw URL path.
+above 8082 is the repository port so we should always use repo port only.
+we should add exclusion for both the worker nodes because can't predict on which workernode kubernetes control plane can deploy the container.
+once added and saved the file then restart the containerd service.
+
+sudo systemctl restart containerd
+
+
+
+******kubectl** and **kOps** and AWS CLI Installed on Jenkins Agent
+
+Make sure that your Jenkins agent or controller (depending on where the jobs run) has the necessary tools installed.
+
+
+SSH into your Jenkins controller and install **kubectl** and **kOps** and **AWS CLI** following the steps in **Step 1.1** above.
+
+Once installed, you can test the installation:
+
+```bash
+kubectl version --client
+kops version
+aws cli
+```
+*****Do Aws configure again using the user who has administrator access like we did for kubernetes workstation
+
+*****check command:- kubectl config current-context   (to check kubectl pointing to which cluster)
+kubectl config get-contexts (get all clusters)
+
+it will show blank data for both commands as we haven't set the kubernetes cluster to jenkins. ( mean not tell jenkins to connect which cluster)
+
+******so first we need to get the kubeconfig from kubernetes workstation and copied it to jenkins server. use the below way to do that.
+
+The default location for this file (kubernetes workstation also) is:
+~/.kube/config
+
+*******manually copy the kubeconfig to jenkins server and set proper permissions.
+1)On your workstation, open kubeconfig file and select all content exactly (including all lines, headers, etc).
+cat ~/.kube/config
+Copy the entire output from your terminal.
+2)On Jenkins server, open the target file in vi and paste the data then save it.(be careful while coping the data)
+sudo mkdir -p /var/lib/jenkins/.kube
+sudo vi /var/lib/jenkins/.kube/config
+3)Set correct ownership and permissions:
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.kube
+sudo chmod 600 /var/lib/jenkins/.kube/config
+
+*****check command again:- kubectl config current-context   (to check kubectl pointing to which cluster)
+kubectl config get-contexts (get all clusters)
+
+u will get the context this time as u have added the kubeconfig from kubernetes workstation to jenkins
+
+****** now below will be the kubernetes stage block in pipeline
+
+stage('Deploy to Kubernetes') {
+    steps {
+        echo "Deploying application to Kubernetes cluster"
+        sh '''
+            # Use the correct context if multiple contexts exist
+            kubectl config use-context test.k8s.local
+
+            # Apply the deployment and service manifests
+            kubectl apply -f k8s/deployment.yaml
+            kubectl apply -f k8s/service.yaml
+
+            # Wait for deployment rollout to finish with timeout
+            kubectl rollout restart deployment my-httpd-site
+        '''
+    }
+}
+
+
+note:-  add this if u want to do get latest image everytime after code commit. this will force remove the old pods and create new ones with new changes so output will be latest.
+kubectl rollout restart deployment my-httpd-site
+
+one time like creates pods and running with the same because we use tag as latest
+kubectl rollout status deployment/my-httpd-site --timeout=120s
+
+
+if u run the pipeline without checking imageid in the deployment.yml file then u will get below errors
+imagepullbackoff
+ErrImagePull
+
+****** check and update the deployment.yml that container image pointed to correct path or not
+image: 13.233.206.88:8082/my-httpd-site:latest  # Change to your public image to nexus docker registry
+
+save. once done trigger the pipeline and check.
+
+*****commands to check if u have any issue with pods:
+kubectl get pods -l app=my-httpd-site
+kubectl describe pod my-httpd-site-7d8d98b97f-bgg4v
+kubectl get svc   (to get loadbalancer name to verify)
+
+
+if pipeline success then verify the output using loadbalancer url.
+
+verify the output from browser.
+
+once successfully access the website, make changes to code so that jenkins detect the changes and create a new image and deploy to k8. verify the output.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+******this is testing purpose using kubernetes imperative commands (without pipeline):-
+
+create cluster
+
+validate the cluster
+
+check ssh between k8workstation and workernodes
+
+add the exclusion thing on workstations to deploy http image
+
+deploy a image with deployment command (verify pod running) (if u r using private registry and private image create the kubernetes secret before using deployment command) 
+
+kubectl create deployment my-httpd-site2 --image=13.201.34.113:8082/my-httpd-site:latest
+
+attach a serive to deployment created. use service type as LoadBalancer.
+
+kubectl expose deployment my-httpd-site2 --type=LoadBalancer --port=80
+
+check pod and service. --- kubectl get pods, kubectl get service my-httpd-site2
+
+verify the output of the deployment i.e index.html in browser  -- verified. able to access the output of index.html
+
+
+-------------------------------------------
+
+Study notes to understand the concept:
+kops is stateless on your local machine
+It doesn't save the cluster name or state bucket between sessions.
+
+It fetches cluster configuration from the S3 bucket — not your local disk.
+
+kops works with S3-based state storage
+Every time you run a kops command (like get cluster, edit cluster, update cluster), it must know:
+
+What your cluster name is (KOPS_CLUSTER_NAME)
+
+Where to read/write the configuration (KOPS_STATE_STORE)
+
+3. 🖥️ Environment variables are session-specific
+When you run:
+export KOPS_CLUSTER_NAME=test.k8s.local
+export KOPS_STATE_STORE=s3://surya-k8-practice-bucket-2244
+
+It sets these only for the current shell session.
+If you close the terminal, those variables are gone.
+
+How to Avoid Exporting Every Time:-
+Add these exports to your shell config file so they are automatically set in every terminal session:
+
+For Bash:
+echo 'export KOPS_CLUSTER_NAME=test.k8s.local' >> ~/.bashrc
+echo 'export KOPS_STATE_STORE=s3://surya-k8-practice-bucket-2244' >> ~/.bashrc
+source ~/.bashrc
+
+---
+
+
+
+
+**********kubeconfig	                               Kubernetes Secret
+Used outside the cluster (Jenkins, kubectl)	Used inside the cluster (by pods)
+Authenticates clients to the cluster	         Stores sensitive data for apps
+Typically managed in Jenkins	                   Managed inside Kubernetes
+Used in CI/CD pipelines	                        Used in Kubernetes manifests
+
+
+***No Kubernetes Secret is needed for public image so Kubernetes can pull it without credentials.
+
+
+Case	                           Need Secret?
+Deploy public image (like httpd)	No
+Use private image	           Yes (image pull secret)
+App uses passwords/API keys	   Yes (env secrets or volume mounts)
+
+
+#### Assumption 3: Access to **kubeconfig**
+
+Ensure that your Jenkins pipeline can access the Kubernetes cluster via the `kubeconfig` file. 
+
+Kubeconfig : it is used by kubectl. jenkins should have it to connect kubernetes cluster so that it can apply kubectl commands on kubernetes cluster with proper info and authentication.
+A kubeconfig file is a configuration file used by kubectl (and other Kubernetes clients) to connect to a Kubernetes cluster.
+
+It contains details like:
+
+The cluster API server endpoint
+
+Authentication credentials (like certificates or tokens)
+
+Namespaces
+
+Context (which cluster/user/namespace to use by default)
+
+The default location for this file is:
+~/.kube/config
+
+Jenkins itself doesn't "know" how to talk to Kubernetes directly. To deploy to Kubernetes from Jenkins, we:
+
+Provide a kubeconfig file with access credentials to the target Kubernetes cluster.
+
+Use this file so that kubectl knows where to connect and how to authenticate.
+
+Without this file:
+Jenkins (and kubectl) has no idea how to access your Kubernetes cluster.
+
+---
+
+
