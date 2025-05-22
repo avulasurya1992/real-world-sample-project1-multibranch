@@ -102,7 +102,7 @@ pipeline {
                     kubectl config use-context test.k8s.local
                     kubectl apply -f k8s/deployment.yaml
                     kubectl apply -f k8s/service.yaml
-                    kubectl rollout status deployment/my-httpd-site --timeout=120s
+                    kubectl rollout restart deployment my-httpd-site
                 '''
             }
         }
