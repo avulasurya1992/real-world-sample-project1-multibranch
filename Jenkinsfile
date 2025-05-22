@@ -98,20 +98,12 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 echo "Deploying application to Kubernetes cluster"
-                withCredentials([file(credentialsId: 'kubeconfig-creds', variable: 'KUBECONFIG')]) {
-                    sh '''
-                        # Optionally set the kubeconfig file location if needed
-                        export KUBECONFIG=${KUBECONFIG}
-
-                        # Ensure to use the correct context if there are multiple contexts
-                        kubectl --kubeconfig=${KUBECONFIG} config use-context test.k8s.local
-
-                        # Apply the deployment and service
-                        kubectl --kubeconfig=${KUBECONFIG} apply -f k8s/deployment.yaml
-                        kubectl --kubeconfig=${KUBECONFIG} apply -f k8s/service.yaml
-                        kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/my-httpd-site
-                    '''
-                }
+                sh '''
+                    kubectl config use-context test.k8s.local
+                    kubectl apply -f k8s/deployment.yaml
+                    kubectl apply -f k8s/service.yaml
+                    kubectl rollout status deployment/my-httpd-site --timeout=120s
+                '''
             }
         }
     }
