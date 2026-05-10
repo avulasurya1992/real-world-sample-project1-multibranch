@@ -1,26 +1,11 @@
-name: Tosca Connectivity Test
+name: Tosca Test
 
 on:
   workflow_dispatch:
 
 jobs:
-  connectivity-test:
+  test:
     runs-on: ubuntu-latest
 
-    environment: tosca-connectivity-test
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Display Variable
-        run: |
-          echo "Server URL: ${{ vars.TOSCA_SERVER }}"
-
-      - name: Test Connectivity
-        run: |
-          curl -v ${{ vars.TOSCA_SERVER }}
-
-      - name: Test Secret Access
-        run: |
-          echo "${{ secrets.TOSCA_USERNAME }}" | wc -c
+      - run: echo "Hello"
