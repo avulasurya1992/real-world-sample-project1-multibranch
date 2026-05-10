@@ -2,6 +2,9 @@ name: Tosca Test
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - test-branch
 
 jobs:
   test:
