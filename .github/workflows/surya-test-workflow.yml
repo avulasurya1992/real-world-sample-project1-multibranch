@@ -1,0 +1,27 @@
+name: Surya Test Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  surya-test:
+    runs-on: ubuntu-latest
+
+    environment: tosca-connectivity-test
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Display Variable
+        run: |
+          echo "Server URL: ${{ vars.TOSCA_SERVER }}"
+
+      - name: Test Connectivity
+        run: |
+          curl -v ${{ vars.TOSCA_SERVER }}
+
+      - name: Test Secret Access
+        run: |
+          echo "${{ secrets.TOSCA_USERNAME }}" | wc -c
+          echo "${{ secrets.TOSCA_PASSWORD }}" | wc -c
