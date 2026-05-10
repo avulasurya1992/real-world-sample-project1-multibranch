@@ -33,6 +33,15 @@ pipeline {
             }
         }
 
+        stage('Show Repo Data') {
+            steps {
+            sh '''
+                echo "Repo Variable: $REPONAME"
+                echo "Repo Secret: $REPO_SECRET"
+            '''
+                }
+            }
+
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
