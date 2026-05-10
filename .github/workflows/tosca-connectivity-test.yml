@@ -2,6 +2,9 @@ name: Tosca Connectivity Test
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - test-branch
 
 jobs:
   connectivity-test:
