@@ -24,3 +24,4 @@ jobs:
       - name: Test Secret Access
         run: |
           echo "${{ secrets.TOSCA_USERNAME }}" | wc -c
+          echo "${{ secrets.TOSCA_PASSWORD }}" | wc -c
